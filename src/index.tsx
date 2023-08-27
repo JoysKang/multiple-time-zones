@@ -1,7 +1,7 @@
 import { List, Action, ActionPanel } from "@raycast/api";
 import { useEffect, useState } from "react";
 import moment from "moment-timezone";
-import { delay, addFavorite, removeFavorite } from "./utils";
+import { delay, addFavorite, removeFavorite, getFavorite, favorites } from "./utils";
 
 interface Data {
   name: string;
@@ -10,16 +10,8 @@ interface Data {
   favorite?: boolean;
 }
 
-/**
- * Generates the time zone selector component.
- *
- * @param {Object} props - The properties of the component.
- * @param {Function} props.onTZChange - The callback function to be called when the time zone is changed.
- * @return {JSX.Element} The JSX element representing the time zone selector.
- */
 function TZS(props: { onTZChange: (newValue: string) => void }): JSX.Element {
   const tzs = moment.tz.names();
-  // console.log(tzs);
 
   const { onTZChange } = props;
   return (
@@ -62,9 +54,13 @@ function getTitle(date: string, fromZone: string, toZone: string): string {
 // 获取所有时区的转换后的时间
 function getAllTimeZones(date: string, fromZone: string): Array<Data> {
   const timeZones = moment.tz.names().map((tz) => {
+    let tzFavorite = false;
+    if (favorites.includes(tz) === true) {
+      tzFavorite = true;
+    }
     const title = getTitle(date, fromZone, tz);
     const dateStr = convertDatesBetweenTimezones(date, fromZone, tz).format("YYYY-MM-DD HH:mm:ss");
-    return { name: tz, title: title, dateStr: dateStr, favorite: false };
+    return { name: tz, title: title, dateStr: dateStr, favorite: tzFavorite };
   });
   return timeZones;
 }
@@ -75,15 +71,17 @@ export default function Command() {
   const [timeZoneSpecified, setTimeZoneSpecified] = useState<string>("");
   const [timeSpecified, setTimeSpecified] = useState<string>("");
   const [allTZ, setAllTZ] = useState<Array<Data>>([]);
-  if (!getAllTimeZones) {
-    setTimeSpecified(moment().format("YYYY-MM-DD HH:mm:ss"));
-  }
 
   useEffect(() => {
-    // 以当地时间为初始时间，初始化列表
-    setIsLoading(true);
-    setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
-    setIsLoading(false);
+    async function syncGetFavorite() {
+      await getFavorite();
+      // 以当地时间为初始时间，初始化列表
+      setIsLoading(true);
+      setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
+      setIsLoading(false);
+    }
+
+    syncGetFavorite();
   }, []);
 
   // 默认时区发生变化时，修改列表的值
@@ -118,41 +116,65 @@ export default function Command() {
     return <ActionPanel>{...actions}</ActionPanel>;
   }
 
+  function getList() {
+    const listItemList: Array<any> = [];
+    const listSectionList: Array<any> = [];
+    allTZ.map((item: Data) => {
+      if (item.favorite) {
+        listSectionList.push(
+          <List.Item
+            key={item.name}
+            title={item.title}
+            accessories={item.favorite ? [{ icon: "favorited.png", tooltip: "Favorited" }] : []}
+            actions={getActions(item)}
+          />
+        );
+      } else {
+        listItemList.push(
+          <List.Item
+            key={item.name}
+            title={item.title}
+            accessories={item.favorite ? [{ icon: "favorited.png", tooltip: "Favorited" }] : []}
+            actions={getActions(item)}
+          />
+        );
+      }
+    });
+    return [
+      <List.Section title="Favorited">{...listSectionList}</List.Section>,
+      <List.Section title="Not Favorited">{...listItemList}</List.Section>,
+    ];
+  }
+
   return (
     <List
       isLoading={isLoading}
-      filtering={true}
+      // filtering={true}
       searchBarPlaceholder="Get other time zone times for input time."
       searchBarAccessory={<TZS onTZChange={onTZChange} />}
       onSearchTextChange={(searchText) => {
         // 实现延迟搜索
         changeNumber += 1;
         const currentChangeNumber = changeNumber;
-        delay(800).then(() => {
+        delay(1200).then(() => {
           // 过滤非正常搜索 + 延迟搜索
           if (searchText === "" || currentChangeNumber !== changeNumber) {
             return;
           } else {
             // 检查输入的是否是日期格式
             if (isDateTimeString(searchText)) {
+              console.log("000000");
               setTimeSpecified(searchText);
               setIsLoading(true);
-              const timeZones = getAllTimeZones(timeSpecified, timeZoneSpecified);
-              setAllTZ(timeZones);
+              setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
               setIsLoading(false);
+              console.log(allTZ);
             }
           }
         });
       }}
     >
-      {allTZ.map((item: Data) => (
-        <List.Item
-          key={item.name}
-          title={item.title}
-          actions={getActions(item)}
-          accessories={item.favorite ? [{ icon: "favorited.png", tooltip: "Favorited" }] : []}
-        />
-      ))}
+      {...getList()}
     </List>
   );
 }

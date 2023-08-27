@@ -1,6 +1,6 @@
 import { LocalStorage } from "@raycast/api";
 
-let favorites = "";
+export let favorites: string[] = [];
 
 /**
  * Delays the execution of code by the specified number of milliseconds.
@@ -13,14 +13,15 @@ export function delay(ms: number): Promise<void> {
 }
 
 export async function getFavorite() {
-  const favorites = await LocalStorage.getItem("favorites");
-  if (!favorites) {
-    return [];
-  } else if (typeof favorites === "string") {
-    return favorites.split(",");
+  const favoritesFromLocalStorage = await LocalStorage.getItem("favorites");
+  if (!favoritesFromLocalStorage) {
+    favorites = [];
+  } else if (typeof favoritesFromLocalStorage === "string") {
+    favorites = favoritesFromLocalStorage.split(",");
   } else {
-    return [];
+    favorites = [];
   }
+  return favorites;
 }
 
 export async function addFavorite(timezone: string) {
@@ -28,6 +29,7 @@ export async function addFavorite(timezone: string) {
   if (favorites.length === 0) {
     await LocalStorage.setItem("favorites", timezone);
   } else {
+    favorites.push(timezone);
     await LocalStorage.setItem("favorites", favorites.join(","));
   }
 }
