@@ -1,11 +1,12 @@
-import { List, Toast, showToast } from "@raycast/api";
-import { useState } from "react";
+import { List, Action, ActionPanel } from "@raycast/api";
+import { useEffect, useState } from "react";
 import moment from "moment-timezone";
-import { delay } from "./utils";
+import { delay, addFavorite, removeFavorite } from "./utils";
 
 interface Data {
   name: string;
-  timeStr: string;
+  title: string;
+  dateStr: string;
   favorite?: boolean;
 }
 
@@ -38,74 +39,119 @@ function TZS(props: { onTZChange: (newValue: string) => void }): JSX.Element {
   );
 }
 
+// 是不是时间格式
 function isDateTimeString(dateString: string): boolean {
   return moment(dateString, moment.ISO_8601, true).isValid();
 }
 
+// 两个时区的转换
 function convertDatesBetweenTimezones(date: string, fromZone: string, toZone: string) {
+  if (!date) {
+    date = moment().format("YYYY-MM-DD HH:mm:ss");
+  }
   const from = moment.tz(date, fromZone);
   return from.clone().tz(toZone);
 }
 
-/**
- * Retrieves the title for a given date and time in a specified time zone.
- *
- * @param {string} date - The date and time to retrieve the title for. If not provided, the current date and time will be used.
- * @param {string} fromZone - The time zone of the input date and time.
- * @param {string} toZone - The time zone to convert the date and time to.
- * @return {string} The title for the converted date and time in the specified time zone.
- */
+// 时区名称
 function getTitle(date: string, fromZone: string, toZone: string): string {
-  if (!date) {
-    date = moment().format("YYYY-MM-DD HH:mm:ss");
-  }
   const toZoneDate = convertDatesBetweenTimezones(date, fromZone, toZone).format("YYYY-MM-DD HH:mm:ss");
-  // if (toZone === "Asia/Shanghai") {
-  //   console.log(fromZone, toZone, "===", toZoneDate);
-  // }
-
   return `${toZone}(${moment.tz(fromZone).format("ZZ")}): ${toZoneDate}`;
+}
+
+// 获取所有时区的转换后的时间
+function getAllTimeZones(date: string, fromZone: string): Array<Data> {
+  const timeZones = moment.tz.names().map((tz) => {
+    const title = getTitle(date, fromZone, tz);
+    const dateStr = convertDatesBetweenTimezones(date, fromZone, tz).format("YYYY-MM-DD HH:mm:ss");
+    return { name: tz, title: title, dateStr: dateStr, favorite: false };
+  });
+  return timeZones;
 }
 
 export default function Command() {
   let changeNumber = 0;
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [timeZoneSpecified, setTimeZoneSpecified] = useState<string>("");
   const [timeSpecified, setTimeSpecified] = useState<string>("");
-  const onTZChange = (newValue: string) => {
-    console.log(newValue, "===");
+  const [allTZ, setAllTZ] = useState<Array<Data>>([]);
+  if (!getAllTimeZones) {
+    setTimeSpecified(moment().format("YYYY-MM-DD HH:mm:ss"));
+  }
+
+  useEffect(() => {
+    // 以当地时间为初始时间，初始化列表
+    setIsLoading(true);
+    setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
+    setIsLoading(false);
+  }, []);
+
+  // 默认时区发生变化时，修改列表的值
+  function onTZChange(newValue: string) {
     setTimeZoneSpecified(newValue);
-  };
+    setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
+  }
+
+  function getActions(item: Data) {
+    const actions = [
+      <Action.CopyToClipboard title="Copy Price" content={item.dateStr} onCopy={() => item.dateStr} />,
+      <Action
+        title={item.favorite ? "Remove From Favorite" : "Add To Favorite"}
+        icon={item.favorite ? "remove.png" : "favorite.png"}
+        onAction={async () => {
+          setAllTZ((allTZ) =>
+            allTZ.map((i) => {
+              if (i.name === item.name) {
+                return { ...i, favorite: !item.favorite };
+              }
+              return i;
+            })
+          );
+          if (item.favorite) {
+            await removeFavorite(item.name);
+          } else {
+            addFavorite(item.name);
+          }
+        }}
+      />,
+    ];
+    return <ActionPanel>{...actions}</ActionPanel>;
+  }
 
   return (
     <List
-      filtering={false}
+      isLoading={isLoading}
+      filtering={true}
       searchBarPlaceholder="Get other time zone times for input time."
       searchBarAccessory={<TZS onTZChange={onTZChange} />}
       onSearchTextChange={(searchText) => {
         // 实现延迟搜索
         changeNumber += 1;
         const currentChangeNumber = changeNumber;
-        delay(1200).then(() => {
+        delay(800).then(() => {
           // 过滤非正常搜索 + 延迟搜索
           if (searchText === "" || currentChangeNumber !== changeNumber) {
             return;
           } else {
             // 检查输入的是否是日期格式
-            if (!isDateTimeString(searchText)) {
-              showToast({
-                title: "Format error.",
-                message: "The input is not in time format.",
-                style: Toast.Style.Failure,
-              });
-            } else {
+            if (isDateTimeString(searchText)) {
               setTimeSpecified(searchText);
+              setIsLoading(true);
+              const timeZones = getAllTimeZones(timeSpecified, timeZoneSpecified);
+              setAllTZ(timeZones);
+              setIsLoading(false);
             }
           }
         });
       }}
     >
-      {moment.tz.names().map((tz) => (
-        <List.Item key={tz} title={getTitle(timeSpecified, timeZoneSpecified, tz)} />
+      {allTZ.map((item: Data) => (
+        <List.Item
+          key={item.name}
+          title={item.title}
+          actions={getActions(item)}
+          accessories={item.favorite ? [{ icon: "favorited.png", tooltip: "Favorited" }] : []}
+        />
       ))}
     </List>
   );
