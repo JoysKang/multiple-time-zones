@@ -159,7 +159,7 @@ export default function Command() {
   return (
     <List
       isLoading={isLoading}
-      // filtering={true}
+      filtering={true}
       searchBarPlaceholder="Get other time zone times for input time."
       searchBarAccessory={<TZS onTZChange={onTZChange} />}
       onSearchTextChange={(searchText) => {
@@ -177,6 +177,12 @@ export default function Command() {
               setIsLoading(true);
               setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
               setIsLoading(false);
+            } else {
+              if (searchText !== "") {
+                setAllTZ(allTZ.filter((item) => item.title.toLowerCase().includes(searchText.toLowerCase())));
+              } else {
+                setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
+              }
             }
           }
         });
