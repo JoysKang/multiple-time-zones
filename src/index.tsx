@@ -173,12 +173,10 @@ export default function Command() {
           } else {
             // 检查输入的是否是日期格式
             if (isDateTimeString(searchText)) {
-              console.log("000000");
               setTimeSpecified(searchText);
               setIsLoading(true);
               setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
               setIsLoading(false);
-              console.log(allTZ);
             }
           }
         });
