@@ -45,7 +45,7 @@ function convertDatesBetweenTimezones(date: string, fromZone: string, toZone: st
 // 时区名称
 function getTitle(date: string, fromZone: string, toZone: string): string {
   const toZoneDate = convertDatesBetweenTimezones(date, fromZone, toZone).format("YYYY-MM-DD HH:mm:ss");
-  return `${toZone}(${moment.tz(fromZone).format("ZZ")}): ${toZoneDate}`;
+  return `${toZone}(${moment.tz(toZone).format("ZZ")}): ${toZoneDate}`;
 }
 
 // 获取所有时区的转换后的时间
@@ -88,6 +88,12 @@ export default function Command() {
 
     syncGetFavorite();
   }, []);
+
+  function syncGetAllTimeZones() {
+    setIsLoading(true);
+    setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
+    setIsLoading(false);
+  }
 
   // 默认时区发生变化时，修改列表的值
   function onTZChange(newValue: string) {
@@ -168,20 +174,16 @@ export default function Command() {
         const currentChangeNumber = changeNumber;
         delay(1200).then(() => {
           // 过滤非正常搜索 + 延迟搜索
-          if (searchText === "" || currentChangeNumber !== changeNumber) {
+          if (currentChangeNumber !== changeNumber) {
             return;
           } else {
             // 检查输入的是否是日期格式
             if (isDateTimeString(searchText)) {
               setTimeSpecified(searchText);
-              setIsLoading(true);
-              setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
-              setIsLoading(false);
+              syncGetAllTimeZones();
             } else {
               if (searchText !== "") {
-                setAllTZ(allTZ.filter((item) => item.title.toLowerCase().includes(searchText.toLowerCase())));
-              } else {
-                setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
+                return allTZ.filter((item) => item.title.toLowerCase().includes(searchText.toLowerCase()));
               }
             }
           }
