@@ -38,9 +38,6 @@ function isDateTimeString(dateString: string): boolean {
 
 // 两个时区的转换
 function convertDatesBetweenTimezones(date: string, fromZone: string, toZone: string) {
-  if (!date) {
-    date = moment().format("YYYY-MM-DD HH:mm:ss");
-  }
   const from = moment.tz(date, fromZone);
   return from.clone().tz(toZone);
 }
@@ -53,6 +50,9 @@ function getTitle(date: string, fromZone: string, toZone: string): string {
 
 // 获取所有时区的转换后的时间
 function getAllTimeZones(date: string, fromZone: string): Array<Data> {
+  if (!date) {
+    date = moment().format("YYYY-MM-DD HH:mm:ss");
+  }
   const timeZones = moment.tz.names().map((tz) => {
     let tzFavorite = false;
     if (favorites.includes(tz) === true) {
@@ -72,6 +72,11 @@ export default function Command() {
   const [timeSpecified, setTimeSpecified] = useState<string>("");
   const [allTZ, setAllTZ] = useState<Array<Data>>([]);
 
+  // 初始时区是用户当前时区
+  if (!timeZoneSpecified) {
+    setTimeZoneSpecified(moment.tz.guess());
+  }
+
   useEffect(() => {
     async function syncGetFavorite() {
       await getFavorite();
@@ -86,7 +91,12 @@ export default function Command() {
 
   // 默认时区发生变化时，修改列表的值
   function onTZChange(newValue: string) {
-    setTimeZoneSpecified(newValue);
+    if (newValue) {
+      setTimeZoneSpecified(newValue);
+    } else {
+      setTimeZoneSpecified(moment.tz.guess());
+    }
+
     setAllTZ(getAllTimeZones(timeSpecified, timeZoneSpecified));
   }
 
