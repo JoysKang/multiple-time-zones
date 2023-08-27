@@ -25,20 +25,16 @@ export async function getFavorite() {
 }
 
 export async function addFavorite(timezone: string) {
-  const favorites = await getFavorite();
-  if (favorites.length === 0) {
-    await LocalStorage.setItem("favorites", timezone);
-  } else {
-    favorites.push(timezone);
-    await LocalStorage.setItem("favorites", favorites.join(","));
-  }
+  await getFavorite();
+  favorites.push(timezone);
+  await LocalStorage.setItem("favorites", favorites.join(","));
 }
 
 export async function removeFavorite(timezone: string) {
-  const favoriteCrypto = await getFavorite();
-  if (!favoriteCrypto.includes(timezone)) {
+  await getFavorite();
+  if (!favorites.includes(timezone)) {
     return;
   }
-  favoriteCrypto.splice(favoriteCrypto.indexOf(timezone), 1);
-  await LocalStorage.setItem("favoriteCrypto", favoriteCrypto.join(","));
+  favorites.splice(favorites.indexOf(timezone), 1);
+  await LocalStorage.setItem("favorites", favorites.join(","));
 }

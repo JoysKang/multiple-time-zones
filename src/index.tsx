@@ -124,7 +124,7 @@ export default function Command() {
           if (item.favorite) {
             await removeFavorite(item.name);
           } else {
-            addFavorite(item.name);
+            await addFavorite(item.name);
           }
         }}
       />,
