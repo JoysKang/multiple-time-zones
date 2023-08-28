@@ -9,6 +9,7 @@ interface Data {
   dateStr: string;
   favorite?: boolean;
 }
+let timeSpecified = moment().format("YYYY-MM-DD HH:mm:ss");
 
 function TZS(props: { onTZChange: (newValue: string) => void }): JSX.Element {
   const tzs = moment.tz.names();
@@ -69,8 +70,8 @@ export default function Command() {
   let changeNumber = 0;
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [timeZoneSpecified, setTimeZoneSpecified] = useState<string>("");
-  const [timeSpecified, setTimeSpecified] = useState<string>("");
   const [allTZ, setAllTZ] = useState<Array<Data>>([]);
+  const [isFiltering, setIsFiltering] = useState<boolean>(true);
 
   // 初始时区是用户当前时区
   if (!timeZoneSpecified) {
@@ -165,21 +166,22 @@ export default function Command() {
   return (
     <List
       isLoading={isLoading}
-      filtering={true}
+      filtering={isFiltering}
       searchBarPlaceholder="Get other time zone times for input time."
       searchBarAccessory={<TZS onTZChange={onTZChange} />}
       onSearchTextChange={(searchText) => {
         // 实现延迟搜索
         changeNumber += 1;
         const currentChangeNumber = changeNumber;
-        delay(1200).then(() => {
+        delay(500).then(() => {
           // 过滤非正常搜索 + 延迟搜索
           if (currentChangeNumber !== changeNumber) {
             return;
           } else {
             // 检查输入的是否是日期格式
             if (isDateTimeString(searchText)) {
-              setTimeSpecified(searchText);
+              setIsFiltering(false);
+              timeSpecified = searchText;
               syncGetAllTimeZones();
             } else {
               if (searchText !== "") {
