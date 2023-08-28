@@ -184,6 +184,7 @@ export default function Command() {
               timeSpecified = searchText;
               syncGetAllTimeZones();
             } else {
+              setIsFiltering(true);
               if (searchText !== "") {
                 return allTZ.filter((item) => item.title.toLowerCase().includes(searchText.toLowerCase()));
               }
